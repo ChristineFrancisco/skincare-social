@@ -19,6 +19,7 @@ A full-stack MERN application for sharing skincare experiences, reviewing produc
 - Node.js: Runtime Environment
 - Cloudinary: Image Storage
 - Google OAuth: Authentication
+- Material-UI: UI Components
 
 ## Getting Started
 
