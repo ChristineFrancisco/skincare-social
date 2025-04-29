@@ -3,7 +3,6 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import passport from 'passport';
-import { v2 as cloudinary } from 'cloudinary';
 
 // Route imports
 import authRoutes from './routes/auth.js';
@@ -26,12 +25,8 @@ app.use(passport.initialize());
 // Configure passport
 configurePassport(passport);
 
-// Configure cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
+// Removed Cloudinary import: using Pronto SDK instead
+// Removed Cloudinary configuration; Pronto SDK will handle uploads
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI)

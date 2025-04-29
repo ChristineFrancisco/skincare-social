@@ -1,7 +1,7 @@
 import express from 'express';
 import passport from 'passport';
 import multer from 'multer';
-import { v2 as cloudinary } from 'cloudinary';
+import { uploadFile } from '../config/pronto.js';
 import Post from '../models/Post.js';
 import Product from '../models/Product.js';
 import User from '../models/User.js';
@@ -16,10 +16,21 @@ router.post(
   upload.single('image'),
   async (req, res) => {
     try {
-      // Upload image to Cloudinary
-      const b64 = Buffer.from(req.file.buffer).toString('base64');
-      const dataURI = 'data:' + req.file.mimetype + ';base64,' + b64;
-      const result = await cloudinary.uploader.upload(dataURI);
+      // Upload image to Pronto
+      const uploadResult = await uploadFile(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype
+      );
+      console.log('Pronto upload result:', uploadResult);
+
+      // Extract file metadata from different possible shapes
+      const fileInfo = uploadResult.file ?? uploadResult.data ?? uploadResult;
+      const imageUrl = fileInfo.secureUrl || fileInfo.rawUrl || fileInfo.url;
+      if (!imageUrl) {
+        console.error('Missing image URL in uploadResult', fileInfo);
+        throw new Error('No file URL returned from Pronto');
+      }
 
       // Parse and link products
       const prodInputs = JSON.parse(req.body.products);
@@ -32,7 +43,7 @@ router.post(
       // Create post
       const post = await Post.create({
         user: req.user._id,
-        image: result.secure_url,
+        image: imageUrl,
         description: req.body.description,
         products: prodIds,
         skinConcerns: JSON.parse(req.body.skinConcerns),
@@ -47,7 +58,8 @@ router.post(
       await post.populate('user', 'name avatar');
       res.status(201).json(post);
     } catch (error) {
-      res.status(500).json({ message: 'Error creating post' });
+      console.error('Error creating post:', error);
+      res.status(500).json({ message: 'Error creating post', error: error.message });
     }
   }
 );
@@ -82,8 +94,8 @@ router.get(
       const total = await Post.countDocuments(query);
       res.json({ posts, totalPages: Math.ceil(total / limit), currentPage: page });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Error fetching posts' });
+      console.error('Error fetching posts:', error);
+      res.status(500).json({ message: 'Error fetching posts', error: error.message });
     }
   }
 );
@@ -111,7 +123,8 @@ router.post(
       await post.save();
       res.json(post);
     } catch (error) {
-      res.status(500).json({ message: 'Error updating like' });
+      console.error('Error updating like:', error);
+      res.status(500).json({ message: 'Error updating like', error: error.message });
     }
   }
 );
@@ -138,7 +151,8 @@ router.post(
       
       res.json(post);
     } catch (error) {
-      res.status(500).json({ message: 'Error adding comment' });
+      console.error('Error adding comment:', error);
+      res.status(500).json({ message: 'Error adding comment', error: error.message });
     }
   }
 );
@@ -166,8 +180,8 @@ router.post(
       await post.populate('reviews.user', 'name avatar');
       res.json(post);
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Error adding review' });
+      console.error('Error adding review:', error);
+      res.status(500).json({ message: 'Error adding review', error: error.message });
     }
   }
 );
