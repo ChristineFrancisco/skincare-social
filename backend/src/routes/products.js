@@ -97,4 +97,47 @@ router.delete(
   }
 );
 
+// Rate a product
+router.post(
+  '/:id/rate',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    const productId = req.params.id;
+    const { rating } = req.body;
+    if (typeof rating !== 'number' || rating < 1 || rating > 10) {
+      return res.status(400).json({ message: 'Rating must be a number between 1 and 10' });
+    }
+    try {
+      const product = await Product.findById(productId);
+      if (!product) {
+        return res.status(404).json({ message: 'Product not found' });
+      }
+      // Update user rating map
+      const user = await User.findById(req.user._id);
+      const oldRating = user.ratings.get(productId) ?? null;
+      user.ratings.set(productId, rating);
+      await user.save();
+
+      // Update product averageRating and ratingCount
+      let newCount;
+      let newAvg;
+      if (oldRating !== null) {
+        newCount = product.ratingCount;
+        newAvg = (product.averageRating * newCount + (rating - oldRating)) / newCount;
+      } else {
+        newCount = product.ratingCount + 1;
+        newAvg = (product.averageRating * product.ratingCount + rating) / newCount;
+      }
+      product.averageRating = newAvg;
+      product.ratingCount = newCount;
+      await product.save();
+
+      res.json({ productId, averageRating: newAvg, ratingCount: newCount });
+    } catch (err) {
+      console.error('Error rating product:', err);
+      res.status(500).json({ message: 'Error rating product', error: err.message });
+    }
+  }
+);
+
 export default router;
